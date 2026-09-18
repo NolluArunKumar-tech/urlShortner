@@ -131,7 +131,9 @@
         <tr>
           <td>${i + 1}</td>
           <td class="short-link"><a href="/${row.shortCode}" target="_blank">/${row.shortCode}</a></td>
-          <td><a href="${row.originalUrl}" target="_blank" title="${row.originalUrl}">${row.originalUrl.length > 60 ? row.originalUrl.slice(0, 60) + '…' : row.originalUrl}</a></td>
+          <td>${row.originalUrl
+            ? `<a href="${row.originalUrl}" target="_blank" title="${row.originalUrl}">${row.originalUrl.length > 60 ? row.originalUrl.slice(0, 60) + '...' : row.originalUrl}</a>`
+            : '<span style="color:#aaa">URL Deleted For this Alias</span>'}</td>
           <td><span class="badge">${row.clickCount}</span></td>
           <td>${formatDate(row.createdAt)}</td>
         </tr>
