@@ -1,0 +1,354 @@
+openapi: "3.0.3"
+info:
+  title: URL Shortener API
+  description: |
+    Production-grade URL shortener with analytics and rate limiting.
+    All protected endpoints require an `X-API-Key` header.
+  version: "1.0.0"
+  contact:
+    name: URL Shortener
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    ShortenRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          example: https://www.example.com/some/long/path
+        alias:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{3,32}$'
+          example: my-link
+
+    ShortenResponse:
+      type: object
+      properties:
+        shortUrl:
+          type: string
+          example: http://localhost:3000/abc1234
+        shortCode:
+          type: string
+          example: abc1234
+        originalUrl:
+          type: string
+          example: https://www.example.com/some/long/path
+
+    UrlRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        short_code:
+          type: string
+        original_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          nullable: true
+        created_by:
+          type: string
+
+    ClickRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        short_code:
+          type: string
+        clicked_at:
+          type: string
+          format: date-time
+        user_agent:
+          type: string
+        referer:
+          type: string
+
+    AnalyticsResponse:
+      type: object
+      properties:
+        shortCode:
+          type: string
+        originalUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        totalClicks:
+          type: integer
+        clicks:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClickRecord'
+
+    TopUrl:
+      type: object
+      properties:
+        shortCode:
+          type: string
+        clickCount:
+          type: integer
+        originalUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: INVALID_URL
+        message:
+          type: string
+          example: The provided URL is not a valid absolute URL
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        db:
+          type: string
+        uptime:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+paths:
+  /api/shorten:
+    post:
+      summary: Shorten a URL
+      description: |
+        Creates a new short URL. Optionally accepts a custom alias.
+        Subject to rate limiting (60 req/min per API key by default).
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShortenRequest'
+      responses:
+        '201':
+          description: URL shortened successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShortenResponse'
+        '400':
+          description: Invalid URL or alias
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Alias already taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/urls:
+    get:
+      summary: List all shortened URLs
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of all URLs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  urls:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UrlRecord'
+                  total:
+                    type: integer
+        '401':
+          description: Missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/urls/{code}:
+    delete:
+      summary: Delete a short URL
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  shortCode:
+                    type: string
+        '404':
+          description: Short code not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/analytics/top:
+    get:
+      summary: Get top URLs by click count
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+      responses:
+        '200':
+          description: Top URLs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  top:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TopUrl'
+                  total:
+                    type: integer
+
+  /api/analytics/{code}:
+    get:
+      summary: Get analytics for a specific short code
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 100
+      responses:
+        '200':
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsResponse'
+        '404':
+          description: Short code not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /{code}:
+    get:
+      summary: Redirect to original URL
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to original URL
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        '404':
+          description: Short code not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Short code has expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health:
+    get:
+      summary: Health check
+      description: Returns service health. No authentication required.
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service degraded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
