@@ -26,6 +26,13 @@ The system was designed following a structured plan (`url-shortener-plan.md`) de
 The plan was reviewed and approved before implementation began. Each sub-task was completed
 sequentially to ensure stable foundations before adding features.
 
+The retained execution evidence is documented in:
+
+- `AI_EXECUTION_LOG.md` — task intent, AI contribution, engineer decisions, evidence, and validation.
+- `AI_PROMPT_SAMPLES.md` — representative prompts for architecture, implementation, debugging, testing, security, and final review.
+- `SECURITY_REVIEW.md` — findings, accepted prototype limitations, AI safety controls, and release boundary.
+- `REVIEW_CHECKLIST.md` — quality gates and final engineer approval checklist.
+
 ---
 
 ## Scenario 1 — Greenfield: Core URL Shortener API

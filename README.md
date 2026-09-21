@@ -184,16 +184,20 @@ url-shortener/
 
 ## Testing Approach
 
-- **Unit tests** (`tests/unit/`) use an in-memory SQLite DB (`:memory:`) — no disk I/O, no state leakage between test files
-- **Integration tests** (`tests/integration/`) use Supertest to exercise the full Express request/response cycle
-- Tests run serially (`--runInBand`) to avoid WAL mode file-lock issues on shared DB handles
-- Coverage target: ≥ 80% lines/functions
-
 ---
 
-## Known Limitations
+- Coverage target: ≥ 80% lines/functions
 
-- In-memory rate limit store resets on process restart (see `ENGINEERING_SUMMARY.md`)
-- Dashboard API key is entered manually — not persisted in localStorage
+## Engineering Evidence
+
+The assignment execution record is available in:
+
+- `url-shortener-plan.md` — sequenced tasks, dependencies, acceptance criteria, and definition of done
+- `AI_EXECUTION_LOG.md` — AI contributions, engineer decisions, implementation evidence, and validation
+- `AI_PROMPT_SAMPLES.md` — representative prompts and review follow-ups
+- `SECURITY_REVIEW.md` — security findings, AI safety controls, and release boundary
+- `REVIEW_CHECKLIST.md` — quality gates and human approval checklist
+
+## Known Limitations
 - SQLite is not suitable for high-concurrency multi-process deployments (use PostgreSQL + Redis for production)
 - No HTTPS termination — intended for use behind a reverse proxy (nginx/caddy)
